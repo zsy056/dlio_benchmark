@@ -34,7 +34,7 @@ class ADLSGen2Storage(DataStorage):
     @dlp.log_init
     def __init__(self, namespace, framework=None):
         super().__init__(framework)
-        self.namespace = Namespace(namespace, NamespaceType.FLAT)
+        self.namespace = Namespace(namespace, NamespaceType.HIERARCHICAL)
 
     @dlp.log
     def get_uri(self, id):
