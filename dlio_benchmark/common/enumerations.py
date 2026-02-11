@@ -58,6 +58,7 @@ class StorageType(Enum):
     LOCAL_FS = 'local_fs'
     PARALLEL_FS = 'parallel_fs'
     S3 = 's3'
+    ADLS_GEN2 = 'adls_gen2'
 
     def __str__(self):
         return self.value
@@ -69,6 +70,7 @@ class MetadataType(Enum):
     FILE = 'file'
     DIRECTORY = 'directory'
     S3_OBJECT = 's3_object'
+    ADLS_OBJECT = 'adls_object'
 
     def __str__(self):
         return self.value

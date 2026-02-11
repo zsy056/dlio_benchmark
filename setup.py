@@ -48,6 +48,9 @@ extras = {
     "s3": [
         "s3torchconnector",
     ],
+    "adls": [
+        "azure-storage-blob",
+    ],
 }
 
 here = pathlib.Path(__file__).parent.resolve()
