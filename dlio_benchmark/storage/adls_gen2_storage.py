@@ -20,7 +20,6 @@ from dlio_benchmark.common.constants import MODULE_STORAGE
 from dlio_benchmark.storage.storage_handler import DataStorage, Namespace
 from dlio_benchmark.common.enumerations import NamespaceType, MetadataType
 import os
-import glob as glob_module
 
 from dlio_benchmark.utils.utility import Profile
 
@@ -157,7 +156,7 @@ class ADLSGen2Storage(DataStorage):
                 file_client = self.file_system_client.get_file_client(id)
                 file_client.get_file_properties()
                 return MetadataType.FILE
-            except:
+            except Exception:
                 return None
 
     @dlp.log
@@ -220,7 +219,7 @@ class ADLSGen2Storage(DataStorage):
             directory_client = self.file_system_client.get_directory_client(id)
             directory_client.delete_directory()
             return True
-        except:
+        except Exception:
             try:
                 # Try to delete as file
                 file_client = self.file_system_client.get_file_client(id)
@@ -293,7 +292,7 @@ class ADLSGen2Storage(DataStorage):
             properties = file_client.get_file_properties()
             # If we can get file properties and it's not a directory, it's a file
             return not properties.get('is_directory', False)
-        except:
+        except Exception:
             return False
 
     def get_basename(self, id):
