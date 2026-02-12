@@ -49,7 +49,8 @@ extras = {
         "s3torchconnector",
     ],
     "adls": [
-        "azure-storage-blob",
+        "azure-storage-file-datalake>=12.0.0",
+        "azure-identity>=1.12.0",
     ],
 }
 

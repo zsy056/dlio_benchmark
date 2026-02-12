@@ -20,6 +20,7 @@ from dlio_benchmark.common.constants import MODULE_STORAGE
 from dlio_benchmark.storage.storage_handler import DataStorage, Namespace
 from dlio_benchmark.common.enumerations import NamespaceType, MetadataType
 import os
+import glob as glob_module
 
 from dlio_benchmark.utils.utility import Profile
 
@@ -29,12 +30,57 @@ dlp = Profile(MODULE_STORAGE)
 class ADLSGen2Storage(DataStorage):
     """
     Storage APIs for ADLS Gen2 (Azure Data Lake Storage Gen2).
+    Uses Azure Data Lake Storage Gen2 Python SDK to interact with Azure storage.
     """
 
     @dlp.log_init
     def __init__(self, namespace, framework=None):
         super().__init__(framework)
         self.namespace = Namespace(namespace, NamespaceType.HIERARCHICAL)
+        
+        # Import Azure SDK libraries
+        try:
+            from azure.storage.filedatalake import DataLakeServiceClient
+            from azure.identity import DefaultAzureCredential
+            from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
+        except ImportError:
+            raise ImportError(
+                "Azure Storage libraries are required for ADLS Gen2 support. "
+                "Install with: pip install azure-storage-file-datalake azure-identity"
+            )
+        
+        # Store exception types for use in methods
+        self.ResourceNotFoundError = ResourceNotFoundError
+        self.ResourceExistsError = ResourceExistsError
+        
+        # Get storage configuration from args
+        storage_options = getattr(self._args, "storage_options", {}) or {}
+        
+        # Support both connection string and account URL authentication
+        connection_string = storage_options.get("connection_string")
+        account_url = storage_options.get("account_url")
+        account_name = storage_options.get("account_name")
+        
+        if connection_string:
+            # Use connection string authentication
+            self.service_client = DataLakeServiceClient.from_connection_string(connection_string)
+        elif account_url:
+            # Use account URL with default credential
+            credential = DefaultAzureCredential()
+            self.service_client = DataLakeServiceClient(account_url=account_url, credential=credential)
+        elif account_name:
+            # Construct account URL from account name
+            account_url = f"https://{account_name}.dfs.core.windows.net"
+            credential = DefaultAzureCredential()
+            self.service_client = DataLakeServiceClient(account_url=account_url, credential=credential)
+        else:
+            raise ValueError(
+                "ADLS Gen2 requires authentication configuration. "
+                "Provide 'connection_string', 'account_url', or 'account_name' in storage_options."
+            )
+        
+        # Get or create file system client for the namespace (container)
+        self.file_system_client = self.service_client.get_file_system_client(file_system=self.namespace.name)
 
     @dlp.log
     def get_uri(self, id):
@@ -42,39 +88,213 @@ class ADLSGen2Storage(DataStorage):
 
     @dlp.log
     def create_namespace(self, exist_ok=False):
-        return True
+        """
+        Create the file system (container) for ADLS Gen2.
+        """
+        try:
+            self.file_system_client.create_file_system()
+            return True
+        except self.ResourceExistsError:
+            if exist_ok:
+                return True
+            raise
+        except Exception as e:
+            print(f"Error creating namespace '{self.namespace.name}': {e}")
+            return False
 
     @dlp.log
     def get_namespace(self):
-        return self.get_node(self.namespace.name)
+        """
+        Get the namespace (file system/container) information.
+        """
+        try:
+            properties = self.file_system_client.get_file_system_properties()
+            return MetadataType.DIRECTORY
+        except self.ResourceNotFoundError:
+            return None
 
     @dlp.log
     def create_node(self, id, exist_ok=False):
-        return super().create_node(self.get_uri(id), exist_ok)
+        """
+        Create a directory in ADLS Gen2.
+        """
+        try:
+            directory_client = self.file_system_client.get_directory_client(id)
+            directory_client.create_directory()
+            return True
+        except self.ResourceExistsError:
+            if exist_ok:
+                return True
+            raise
+        except Exception as e:
+            print(f"Error creating node '{id}': {e}")
+            return False
 
     @dlp.log
     def get_node(self, id=""):
-        return super().get_node(self.get_uri(id))
+        """
+        Get metadata about a path (file or directory).
+        """
+        if not id or id == "":
+            return self.get_namespace()
+        
+        try:
+            # Try as directory first
+            directory_client = self.file_system_client.get_directory_client(id)
+            properties = directory_client.get_directory_properties()
+            if properties.get('is_directory', False):
+                return MetadataType.DIRECTORY
+            
+            # Try as file
+            file_client = self.file_system_client.get_file_client(id)
+            properties = file_client.get_file_properties()
+            return MetadataType.FILE
+        except self.ResourceNotFoundError:
+            return None
+        except Exception as e:
+            # If we can't determine, try to check if it's a file
+            try:
+                file_client = self.file_system_client.get_file_client(id)
+                file_client.get_file_properties()
+                return MetadataType.FILE
+            except:
+                return None
 
     @dlp.log
     def walk_node(self, id, use_pattern=False):
-        return super().walk_node(self.get_uri(id), use_pattern)
+        """
+        List files and directories under a path.
+        """
+        try:
+            if not use_pattern:
+                # List all items in the directory
+                paths = self.file_system_client.get_paths(path=id)
+                result = []
+                prefix_len = len(id.rstrip('/') + '/') if id else 0
+                
+                for path in paths:
+                    path_name = path.name
+                    # Get only immediate children (not nested)
+                    if prefix_len > 0:
+                        relative_path = path_name[prefix_len:]
+                    else:
+                        relative_path = path_name
+                    
+                    # Only include immediate children (no slashes in relative path)
+                    if '/' not in relative_path:
+                        result.append(relative_path)
+                
+                return result
+            else:
+                # Pattern matching for file extensions
+                format_ext = id.split(".")[-1]
+                if format_ext != format_ext.lower():
+                    raise Exception(f"Unknown file format {format_ext}")
+                
+                # List files matching the pattern
+                paths = self.file_system_client.get_paths(path=os.path.dirname(id))
+                result = []
+                
+                # Match files with both lowercase and uppercase extensions
+                lower_pattern = id
+                upper_pattern = id.replace(format_ext, format_ext.upper())
+                
+                for path in paths:
+                    path_name = path.name
+                    if (path_name.endswith(format_ext) or 
+                        path_name.endswith(format_ext.upper())):
+                        result.append(os.path.basename(path_name))
+                
+                return result
+        except Exception as e:
+            print(f"Error walking node '{id}': {e}")
+            return []
 
     @dlp.log
     def delete_node(self, id):
-        return super().delete_node(self.get_uri(id))
+        """
+        Delete a file or directory from ADLS Gen2.
+        """
+        try:
+            # Try to delete as directory first
+            directory_client = self.file_system_client.get_directory_client(id)
+            directory_client.delete_directory()
+            return True
+        except:
+            try:
+                # Try to delete as file
+                file_client = self.file_system_client.get_file_client(id)
+                file_client.delete_file()
+                return True
+            except Exception as e:
+                print(f"Error deleting node '{id}': {e}")
+                return False
 
     @dlp.log
     def put_data(self, id, data, offset=None, length=None):
-        return super().put_data(self.get_uri(id), data, offset, length)
+        """
+        Upload data to a file in ADLS Gen2.
+        """
+        try:
+            file_client = self.file_system_client.get_file_client(id)
+            
+            # Handle different data types
+            if hasattr(data, 'getvalue'):
+                # BytesIO or StringIO object
+                data_bytes = data.getvalue()
+            elif isinstance(data, bytes):
+                data_bytes = data
+            elif isinstance(data, str):
+                data_bytes = data.encode('utf-8')
+            else:
+                data_bytes = str(data).encode('utf-8')
+            
+            if offset is not None and length is not None:
+                # Partial write - append to existing file
+                file_client.append_data(data_bytes, offset=offset, length=length)
+                file_client.flush_data(offset + length)
+            else:
+                # Full write - create/overwrite file
+                file_client.create_file()
+                file_client.upload_data(data_bytes, overwrite=True)
+            
+            return True
+        except Exception as e:
+            print(f"Error putting data to '{id}': {e}")
+            return False
 
     @dlp.log
     def get_data(self, id, data, offset=None, length=None):
-        return super().get_data(self.get_uri(id), data, offset, length)
+        """
+        Download data from a file in ADLS Gen2.
+        """
+        try:
+            file_client = self.file_system_client.get_file_client(id)
+            
+            if offset is not None and length is not None:
+                # Partial read
+                download_stream = file_client.download_file(offset=offset, length=length)
+            else:
+                # Full read
+                download_stream = file_client.download_file()
+            
+            return download_stream.readall()
+        except Exception as e:
+            print(f"Error getting data from '{id}': {e}")
+            return None
 
     @dlp.log
     def isfile(self, id):
-        return super().isfile(self.get_uri(id))
+        """
+        Check if the path is a file.
+        """
+        try:
+            file_client = self.file_system_client.get_file_client(id)
+            properties = file_client.get_file_properties()
+            # If we can get file properties and it's not a directory, it's a file
+            return not properties.get('is_directory', False)
+        except:
+            return False
 
     def get_basename(self, id):
         return os.path.basename(id)
