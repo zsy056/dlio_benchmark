@@ -51,6 +51,7 @@ extras = {
     "adls": [
         "azure-storage-file-datalake>=12.0.0",
         "azure-identity>=1.12.0",
+        "azstoragetorch",
     ],
 }
 

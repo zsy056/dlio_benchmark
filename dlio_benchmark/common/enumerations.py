@@ -27,6 +27,7 @@ class CheckpointMechanismType(Enum):
     TF_SAVE = 'tf_save'
     PT_SAVE = 'pt_save'
     PT_S3_SAVE = 'pt_s3_save'
+    PT_ADLS_SAVE = 'pt_adls_save'
 
     def __str__(self):
         return self.value

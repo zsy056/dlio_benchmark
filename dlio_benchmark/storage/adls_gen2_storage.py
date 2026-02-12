@@ -215,19 +215,12 @@ class ADLSGen2Storage(DataStorage):
         Delete a file or directory from ADLS Gen2.
         """
         try:
-            # Try to delete as directory first
-            directory_client = self.file_system_client.get_directory_client(id)
-            directory_client.delete_directory()
+            file_client = self.file_system_client.get_file_client(id)
+            file_client.delete_file()
             return True
-        except Exception:
-            try:
-                # Try to delete as file
-                file_client = self.file_system_client.get_file_client(id)
-                file_client.delete_file()
-                return True
-            except Exception as e:
-                print(f"Error deleting node '{id}': {e}")
-                return False
+        except Exception as e:
+            print(f"Error deleting node '{id}': {e}")
+            return False
 
     @dlp.log
     def put_data(self, id, data, offset=None, length=None):
