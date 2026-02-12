@@ -16,7 +16,6 @@
 """
 import os
 import torch
-import ctypes
 from dlio_benchmark.checkpointing.base_checkpointing import BaseCheckpointing
 from dlio_benchmark.checkpointing.pytorch_checkpointing import PyTorchCheckpointing
 from dlio_benchmark.utils.utility import Profile, dft_ai
