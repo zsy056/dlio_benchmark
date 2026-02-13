@@ -60,6 +60,8 @@ jobs:
           key: ${{ matrix.venv }}-gcc${{ matrix.gcc }}-python${{ matrix.python }}-${{ hashFiles('requirements.txt', 'setup.py') }}
       - name: Install system dependencies
         run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo rm -f /etc/apt/sources.list.d/azure-cli.list
           sudo apt update
           sudo apt-get install -y $CC $CXX libc6 git
           sudo apt-get install -y openmpi-bin openmpi-common libopenmpi-dev python3-dev
