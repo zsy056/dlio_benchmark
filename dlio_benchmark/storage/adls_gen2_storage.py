@@ -139,11 +139,11 @@ class ADLSGen2Storage(DataStorage):
         Create a directory in ADLS Gen2.
         """
         try:
-
             dir_path = self._parse_uri_to_path(id)
-
+            print(f"[DEBUG] create_node called: id={id}, dir_path={dir_path}")
             directory_client = self.file_system_client.get_directory_client(dir_path)
             directory_client.create_directory()
+            print(f"[DEBUG] directory created successfully")
             return True
         except self.ResourceExistsError:
             if exist_ok:
@@ -151,6 +151,8 @@ class ADLSGen2Storage(DataStorage):
             raise
         except Exception as e:
             print(f"Error creating node '{id}': {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     @dlp.log
