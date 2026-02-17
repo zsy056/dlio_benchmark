@@ -281,7 +281,7 @@ def setup_test_env():
         f"++workload.storage.storage_type={storage_type}",
         f"++workload.storage.storage_root={storage_root}",
         f"++workload.dataset.data_folder=abfs://{storage_root}",
-        "++workload.storage.storage_options.connection_string=DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test_key;EndpointSuffix=core.windows.net",
+        "++workload.storage.storage_options.account_name=test",
         "++workload.dataset.num_subfolders_train=0",
         "++workload.dataset.num_subfolders_eval=0"
     ]
@@ -313,21 +313,16 @@ def patch_adls_checkpoint(setup_test_env):
 def test_adls_gen_data(setup_test_env, fmt, framework) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
 
-    # Patch the DataLakeServiceClient to return our mock
-    def mock_service_client_init(self, account_url=None, credential=None):
-        self.account_url = account_url
-        self.credential = credential
-        # Return the mock file system client when get_file_system_client is called
-        self._mock_file_system_client = mock_file_system_client
-    
-    def mock_get_file_system_client(self, file_system):
-        return mock_file_system_client
-
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    # Patch both DataLakeServiceClient and DefaultAzureCredential
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        
+        # Mock credential doesn't need to do anything special
+        mock_cred.return_value = MagicMock()
 
         if (comm.rank == 0):
             logging.info("")
@@ -358,11 +353,13 @@ def test_adls_gen_data(setup_test_env, fmt, framework) -> None:
 def test_adls_subset(setup_test_env) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         if comm.rank == 0:
             logging.info("")
@@ -391,11 +388,13 @@ def test_adls_subset(setup_test_env) -> None:
 def test_adls_eval(setup_test_env) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         if comm.rank == 0:
             logging.info("")
@@ -424,11 +423,13 @@ def test_adls_eval(setup_test_env) -> None:
 def test_adls_multi_threads(setup_test_env, framework, nt) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         if comm.rank == 0:
             logging.info("")
@@ -457,11 +458,13 @@ def test_adls_multi_threads(setup_test_env, framework, nt) -> None:
 def test_adls_pytorch_multiprocessing_context(setup_test_env, nt, context, monkeypatch) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         if comm.rank == 0:
             logging.info("")
@@ -505,11 +508,13 @@ def test_adls_train(setup_test_env, fmt, framework, dataloader, is_even) -> None
     else:
         num_files = 17
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         if comm.rank == 0:
             logging.info("")
@@ -545,11 +550,13 @@ def test_adls_train(setup_test_env, fmt, framework, dataloader, is_even) -> None
 def test_adls_checkpoint_epoch(patch_adls_checkpoint, framework, model_size, optimizers, num_layers, layer_params, zero_stage, randomize) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = patch_adls_checkpoint
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         # Also patch AzStorageCheckpoint if needed
         with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
@@ -593,11 +600,13 @@ def test_adls_checkpoint_epoch(patch_adls_checkpoint, framework, model_size, opt
 def test_adls_checkpoint_step(patch_adls_checkpoint) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = patch_adls_checkpoint
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
             mock_checkpoint_instance = MagicMock()
@@ -640,11 +649,13 @@ def test_adls_checkpoint_step(patch_adls_checkpoint) -> None:
 def test_adls_checkpoint_ksm_config(patch_adls_checkpoint) -> None:
     storage_root, storage_type, mock_file_system_client, adls_overrides = patch_adls_checkpoint
     
-    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service:
+    with patch("dlio_benchmark.storage.adls_gen2_storage.DataLakeServiceClient") as mock_service, \
+         patch("dlio_benchmark.storage.adls_gen2_storage.DefaultAzureCredential") as mock_cred:
         mock_instance = MagicMock()
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
+        mock_cred.return_value = MagicMock()
 
         with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
             mock_checkpoint_instance = MagicMock()
