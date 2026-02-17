@@ -16,6 +16,7 @@
 """
 from time import time
 
+
 from dlio_benchmark.common.constants import MODULE_STORAGE
 from dlio_benchmark.storage.storage_handler import DataStorage, Namespace
 from dlio_benchmark.common.enumerations import NamespaceType, MetadataType
@@ -125,7 +126,17 @@ class ADLSGen2Storage(DataStorage):
         Create a directory in ADLS Gen2.
         """
         try:
-            directory_client = self.file_system_client.get_directory_client(id)
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                dir_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                dir_path = id
+            
+            directory_client = self.file_system_client.get_directory_client(dir_path)
             directory_client.create_directory()
             return True
         except self.ResourceExistsError:
@@ -144,15 +155,25 @@ class ADLSGen2Storage(DataStorage):
         if not id or id == "":
             return self.get_namespace()
         
+        # Parse abfs://container/path to extract just the path
+        
+        parsed = urlparse(id)
+        if parsed.scheme == 'abfs':
+            # Extract path without leading slash
+            node_path = parsed.path.lstrip('/')
+        else:
+            # If no scheme, use id as-is
+            node_path = id
+        
         try:
             # Try as directory first
-            directory_client = self.file_system_client.get_directory_client(id)
+            directory_client = self.file_system_client.get_directory_client(node_path)
             properties = directory_client.get_directory_properties()
             if properties.get('is_directory', False):
                 return MetadataType.DIRECTORY
             
             # Try as file
-            file_client = self.file_system_client.get_file_client(id)
+            file_client = self.file_system_client.get_file_client(node_path)
             properties = file_client.get_file_properties()
             return MetadataType.FILE
         except self.ResourceNotFoundError:
@@ -160,7 +181,7 @@ class ADLSGen2Storage(DataStorage):
         except Exception as e:
             # If we can't determine, try to check if it's a file
             try:
-                file_client = self.file_system_client.get_file_client(id)
+                file_client = self.file_system_client.get_file_client(node_path)
                 file_client.get_file_properties()
                 return MetadataType.FILE
             except Exception:
@@ -172,11 +193,21 @@ class ADLSGen2Storage(DataStorage):
         List files and directories under a path.
         """
         try:
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                dir_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                dir_path = id
+            
             if not use_pattern:
                 # List all items in the directory
-                paths = self.file_system_client.get_paths(path=id)
+                paths = self.file_system_client.get_paths(path=dir_path)
                 result = []
-                prefix_len = len(id.rstrip('/') + '/') if id else 0
+                prefix_len = len(dir_path.rstrip('/') + '/') if dir_path else 0
                 
                 for path in paths:
                     path_name = path.name
@@ -193,17 +224,17 @@ class ADLSGen2Storage(DataStorage):
                 return result
             else:
                 # Pattern matching for file extensions
-                format_ext = id.split(".")[-1]
+                format_ext = dir_path.split(".")[-1]
                 if format_ext != format_ext.lower():
                     raise Exception(f"Unknown file format {format_ext}")
                 
                 # List files matching the pattern
-                paths = self.file_system_client.get_paths(path=os.path.dirname(id))
+                paths = self.file_system_client.get_paths(path=os.path.dirname(dir_path))
                 result = []
                 
                 # Match files with both lowercase and uppercase extensions
-                lower_pattern = id
-                upper_pattern = id.replace(format_ext, format_ext.upper())
+                lower_pattern = dir_path
+                upper_pattern = dir_path.replace(format_ext, format_ext.upper())
                 
                 for path in paths:
                     path_name = path.name
@@ -222,7 +253,17 @@ class ADLSGen2Storage(DataStorage):
         Delete a file or directory from ADLS Gen2.
         """
         try:
-            file_client = self.file_system_client.get_file_client(id)
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                file_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                file_path = id
+            
+            file_client = self.file_system_client.get_file_client(file_path)
             file_client.delete_file()
             return True
         except Exception as e:
@@ -235,7 +276,17 @@ class ADLSGen2Storage(DataStorage):
         Upload data to a file in ADLS Gen2.
         """
         try:
-            file_client = self.file_system_client.get_file_client(id)
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                file_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                file_path = id
+            
+            file_client = self.file_system_client.get_file_client(file_path)
             
             # Handle different data types
             if hasattr(data, 'getvalue'):
@@ -268,7 +319,17 @@ class ADLSGen2Storage(DataStorage):
         Download data from a file in ADLS Gen2.
         """
         try:
-            file_client = self.file_system_client.get_file_client(id)
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                file_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                file_path = id
+            
+            file_client = self.file_system_client.get_file_client(file_path)
             
             if offset is not None and length is not None:
                 # Partial read
@@ -288,7 +349,17 @@ class ADLSGen2Storage(DataStorage):
         Check if the path is a file.
         """
         try:
-            file_client = self.file_system_client.get_file_client(id)
+            # Parse abfs://container/path to extract just the path
+            
+            parsed = urlparse(id)
+            if parsed.scheme == 'abfs':
+                # Extract path without leading slash
+                file_path = parsed.path.lstrip('/')
+            else:
+                # If no scheme, use id as-is
+                file_path = id
+            
+            file_client = self.file_system_client.get_file_client(file_path)
             properties = file_client.get_file_properties()
             # If we can get file properties and it's not a directory, it's a file
             return not properties.get('is_directory', False)
