@@ -256,7 +256,9 @@ class ADLSGen2Storage(DataStorage):
         """
         try:
             file_path = self._parse_uri_to_path(id)
+            print(f"[DEBUG] put_data called: id={id}, file_path={file_path}")
             file_client = self.file_system_client.get_file_client(file_path)
+            print(f"[DEBUG] got file_client, storage has {len(file_client.storage)} keys")
             
             # Handle different data types
             if hasattr(data, 'getvalue'):
@@ -277,10 +279,13 @@ class ADLSGen2Storage(DataStorage):
                 # Full write - create/overwrite file
                 file_client.create_file()
                 file_client.upload_data(data_bytes, overwrite=True)
+                print(f"[DEBUG] after upload_data, storage has {len(file_client.storage)} keys")
             
             return True
         except Exception as e:
             print(f"Error putting data to '{id}': {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     @dlp.log
