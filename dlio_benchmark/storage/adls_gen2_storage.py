@@ -15,7 +15,7 @@
    limitations under the License.
 """
 from time import time
-
+from urllib.parse import urlparse
 
 from dlio_benchmark.common.constants import MODULE_STORAGE
 from dlio_benchmark.storage.storage_handler import DataStorage, Namespace
@@ -93,6 +93,19 @@ class ADLSGen2Storage(DataStorage):
     def get_uri(self, id):
         return "abfs://" + os.path.join(self.namespace.name, id)
 
+    def _parse_uri_to_path(self, uri):
+        """
+        Parse abfs:// URI to extract the path component.
+        Returns just the path within the container (e.g., 'train/file.npy' from 'abfs://container/train/file.npy')
+        """
+        parsed = urlparse(uri)
+        if parsed.scheme == 'abfs':
+            # Extract path without leading slash
+            return parsed.path.lstrip('/')
+        else:
+            # If no scheme, use uri as-is
+            return uri
+
     @dlp.log
     def create_namespace(self, exist_ok=False):
         """
@@ -126,16 +139,9 @@ class ADLSGen2Storage(DataStorage):
         Create a directory in ADLS Gen2.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                dir_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                dir_path = id
-            
+
+            dir_path = self._parse_uri_to_path(id)
+
             directory_client = self.file_system_client.get_directory_client(dir_path)
             directory_client.create_directory()
             return True
@@ -155,16 +161,7 @@ class ADLSGen2Storage(DataStorage):
         if not id or id == "":
             return self.get_namespace()
         
-        # Parse abfs://container/path to extract just the path
-        
-        parsed = urlparse(id)
-        if parsed.scheme == 'abfs':
-            # Extract path without leading slash
-            node_path = parsed.path.lstrip('/')
-        else:
-            # If no scheme, use id as-is
-            node_path = id
-        
+            node_path = self._parse_uri_to_path(id)
         try:
             # Try as directory first
             directory_client = self.file_system_client.get_directory_client(node_path)
@@ -193,16 +190,7 @@ class ADLSGen2Storage(DataStorage):
         List files and directories under a path.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                dir_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                dir_path = id
-            
+            dir_path = self._parse_uri_to_path(id)
             if not use_pattern:
                 # List all items in the directory
                 paths = self.file_system_client.get_paths(path=dir_path)
@@ -253,16 +241,7 @@ class ADLSGen2Storage(DataStorage):
         Delete a file or directory from ADLS Gen2.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                file_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                file_path = id
-            
+            file_path = self._parse_uri_to_path(id)
             file_client = self.file_system_client.get_file_client(file_path)
             file_client.delete_file()
             return True
@@ -276,16 +255,7 @@ class ADLSGen2Storage(DataStorage):
         Upload data to a file in ADLS Gen2.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                file_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                file_path = id
-            
+            file_path = self._parse_uri_to_path(id)
             file_client = self.file_system_client.get_file_client(file_path)
             
             # Handle different data types
@@ -319,16 +289,7 @@ class ADLSGen2Storage(DataStorage):
         Download data from a file in ADLS Gen2.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                file_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                file_path = id
-            
+            file_path = self._parse_uri_to_path(id)
             file_client = self.file_system_client.get_file_client(file_path)
             
             if offset is not None and length is not None:
@@ -349,16 +310,7 @@ class ADLSGen2Storage(DataStorage):
         Check if the path is a file.
         """
         try:
-            # Parse abfs://container/path to extract just the path
-            
-            parsed = urlparse(id)
-            if parsed.scheme == 'abfs':
-                # Extract path without leading slash
-                file_path = parsed.path.lstrip('/')
-            else:
-                # If no scheme, use id as-is
-                file_path = id
-            
+            file_path = self._parse_uri_to_path(id)
             file_client = self.file_system_client.get_file_client(file_path)
             properties = file_client.get_file_properties()
             # If we can get file properties and it's not a directory, it's a file
