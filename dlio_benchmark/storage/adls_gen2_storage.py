@@ -23,6 +23,14 @@ import os
 
 from dlio_benchmark.utils.utility import Profile
 
+# Import Azure SDK libraries at module level for patching in tests
+try:
+    from azure.storage.filedatalake import DataLakeServiceClient
+    from azure.identity import DefaultAzureCredential
+except ImportError:
+    DataLakeServiceClient = None
+    DefaultAzureCredential = None
+
 dlp = Profile(MODULE_STORAGE)
 
 
@@ -37,16 +45,15 @@ class ADLSGen2Storage(DataStorage):
         super().__init__(framework)
         self.namespace = Namespace(namespace, NamespaceType.HIERARCHICAL)
         
-        # Import Azure SDK libraries
-        try:
-            from azure.storage.filedatalake import DataLakeServiceClient
-            from azure.identity import DefaultAzureCredential
-            from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
-        except ImportError:
+        # Check if Azure SDK libraries are available
+        if DataLakeServiceClient is None:
             raise ImportError(
                 "Azure Storage libraries are required for ADLS Gen2 support. "
                 "Install with: pip install azure-storage-file-datalake azure-identity"
             )
+        
+        # Import exception types locally as they're only used in this class
+        from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
         
         # Store exception types for use in methods
         self.ResourceNotFoundError = ResourceNotFoundError
