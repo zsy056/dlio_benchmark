@@ -46,6 +46,8 @@ class ADLSGen2Storage(DataStorage):
         super().__init__(framework)
         self.namespace = Namespace(namespace, NamespaceType.HIERARCHICAL)
         
+        print(f"[DEBUG] ADLSGen2Storage.__init__ called with namespace={namespace}")
+        
         # Check if Azure SDK libraries are available
         if DataLakeServiceClient is None:
             raise ImportError(
@@ -63,6 +65,8 @@ class ADLSGen2Storage(DataStorage):
         # Get storage configuration from args
         storage_options = getattr(self._args, "storage_options", {}) or {}
         
+        print(f"[DEBUG] storage_options: {storage_options}")
+        
         # Support both connection string and account URL authentication
         connection_string = storage_options.get("connection_string")
         account_url = storage_options.get("account_url")
@@ -70,14 +74,17 @@ class ADLSGen2Storage(DataStorage):
         
         if connection_string:
             # Use connection string authentication
+            print(f"[DEBUG] Using connection_string auth")
             self.service_client = DataLakeServiceClient.from_connection_string(connection_string)
         elif account_url:
             # Use account URL with default credential
+            print(f"[DEBUG] Using account_url auth")
             credential = DefaultAzureCredential()
             self.service_client = DataLakeServiceClient(account_url=account_url, credential=credential)
         elif account_name:
             # Construct account URL from account name
             account_url = f"https://{account_name}.dfs.core.windows.net"
+            print(f"[DEBUG] Using account_name auth, constructed URL: {account_url}")
             credential = DefaultAzureCredential()
             self.service_client = DataLakeServiceClient(account_url=account_url, credential=credential)
         else:
@@ -86,8 +93,14 @@ class ADLSGen2Storage(DataStorage):
                 "Provide 'connection_string', 'account_url', or 'account_name' in storage_options."
             )
         
+        print(f"[DEBUG] service_client created: {type(self.service_client)}")
+        
         # Get or create file system client for the namespace (container)
         self.file_system_client = self.service_client.get_file_system_client(file_system=self.namespace.name)
+        
+        print(f"[DEBUG] file_system_client: {type(self.file_system_client)}, has storage: {hasattr(self.file_system_client, 'storage')}")
+        if hasattr(self.file_system_client, 'storage'):
+            print(f"[DEBUG] file_system_client.storage has {len(self.file_system_client.storage)} keys: {list(self.file_system_client.storage.keys())[:5]}")
 
     @dlp.log
     def get_uri(self, id):
