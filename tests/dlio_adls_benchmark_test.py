@@ -320,8 +320,6 @@ def test_adls_gen_data(setup_test_env, fmt, framework) -> None:
         mock_instance.get_file_system_client.return_value = mock_file_system_client
         mock_service.return_value = mock_instance
         mock_service.from_connection_string.return_value = mock_instance
-        
-        # Mock credential doesn't need to do anything special
         mock_cred.return_value = MagicMock()
 
         if (comm.rank == 0):
