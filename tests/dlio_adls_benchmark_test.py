@@ -601,43 +601,38 @@ def test_adls_checkpoint_epoch(patch_adls_checkpoint, framework, model_size, opt
         mock_service.from_connection_string.return_value = mock_instance
         mock_cred.return_value = MagicMock()
 
-        # Also patch AzStorageCheckpoint if needed
-        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
-            mock_checkpoint_instance = MagicMock()
-            mock_checkpoint.return_value = mock_checkpoint_instance
-
-            if comm.rank == 0:
-                logging.info("")
-                logging.info("=" * 80)
-                logging.info(f" DLIO test for checkpointing at the end of epochs on ADLS Gen2")
-                logging.info("=" * 80)
-            
-            with initialize_config_dir(version_base=None, config_dir=config_dir):
-                cfg = compose(config_name='config',
-                             overrides=adls_overrides + [
-                                 '++workload.workflow.checkpoint=True',
-                                 '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
-                                 f'++workload.framework={framework}',
-                                 '++workload.workflow.generate_data=False',
-                                 '++workload.workflow.train=False',
-                                 f'++workload.checkpoint.model_size={model_size}',
-                                 f'++workload.checkpoint.optimization_groups={optimizers}',
-                                 f'++workload.checkpoint.num_layers={num_layers}',
-                                 f'++workload.checkpoint.layer_parameters={layer_params}',
-                                 f'++workload.checkpoint.zero_stage={zero_stage}',
-                                 '++workload.checkpoint.num_checkpoints_write=1',
-                                 '++workload.checkpoint.num_checkpoints_read=1',
-                                 f'++workload.checkpoint.randomize_tensor={randomize}'
-                             ])
-                ConfigArguments.reset()
-                benchmark = DLIOBenchmark(cfg['workload'])
-                benchmark.initialize()
-                benchmark.run()
-                benchmark.finalize()
-            
-            # Clean up
-            clean_adls(mock_file_system_client, ["checkpoints/"])
-            finalize()
+        if comm.rank == 0:
+            logging.info("")
+            logging.info("=" * 80)
+            logging.info(f" DLIO test for checkpointing at the end of epochs on ADLS Gen2")
+            logging.info("=" * 80)
+        
+        with initialize_config_dir(version_base=None, config_dir=config_dir):
+            cfg = compose(config_name='config',
+                         overrides=adls_overrides + [
+                             '++workload.workflow.checkpoint=True',
+                             '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
+                             f'++workload.framework={framework}',
+                             '++workload.workflow.generate_data=False',
+                             '++workload.workflow.train=False',
+                             f'++workload.checkpoint.model_size={model_size}',
+                             f'++workload.checkpoint.optimization_groups={optimizers}',
+                             f'++workload.checkpoint.num_layers={num_layers}',
+                             f'++workload.checkpoint.layer_parameters={layer_params}',
+                             f'++workload.checkpoint.zero_stage={zero_stage}',
+                             '++workload.checkpoint.num_checkpoints_write=1',
+                             '++workload.checkpoint.num_checkpoints_read=1',
+                             f'++workload.checkpoint.randomize_tensor={randomize}'
+                         ])
+            ConfigArguments.reset()
+            benchmark = DLIOBenchmark(cfg['workload'])
+            benchmark.initialize()
+            benchmark.run()
+            benchmark.finalize()
+        
+        # Clean up
+        clean_adls(mock_file_system_client, ["checkpoints/"])
+        finalize()
 
 @pytest.mark.timeout(TEST_TIMEOUT_SECONDS, method="thread")
 def test_adls_checkpoint_step(patch_adls_checkpoint) -> None:
@@ -651,42 +646,38 @@ def test_adls_checkpoint_step(patch_adls_checkpoint) -> None:
         mock_service.from_connection_string.return_value = mock_instance
         mock_cred.return_value = MagicMock()
 
-        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
-            mock_checkpoint_instance = MagicMock()
-            mock_checkpoint.return_value = mock_checkpoint_instance
-
-            if comm.rank == 0:
-                logging.info("")
-                logging.info("=" * 80)
-                logging.info(f" DLIO test for checkpointing at the end of steps on ADLS Gen2")
-                logging.info("=" * 80)
-            
-            with initialize_config_dir(version_base=None, config_dir=config_dir):
-                cfg = compose(config_name='config',
-                             overrides=adls_overrides + [
-                                 '++workload.workflow.checkpoint=True',
-                                 '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
-                                 '++workload.framework=pytorch',
-                                 '++workload.workflow.generate_data=False',
-                                 '++workload.workflow.train=False',
-                                 '++workload.checkpoint.model_size=1024',
-                                 '++workload.checkpoint.optimization_groups=[1024,128]',
-                                 '++workload.checkpoint.num_layers=2',
-                                 '++workload.checkpoint.layer_parameters=[16]',
-                                 '++workload.checkpoint.steps_between_checkpoints=2',
-                                 '++workload.checkpoint.num_checkpoints_write=2',
-                                 '++workload.checkpoint.num_checkpoints_read=2',
-                                 '++workload.checkpoint.randomize_tensor=True'
-                             ])
-                ConfigArguments.reset()
-                benchmark = DLIOBenchmark(cfg['workload'])
-                benchmark.initialize()
-                benchmark.run()
-                benchmark.finalize()
-            
-            # Clean up
-            clean_adls(mock_file_system_client, ["checkpoints/"])
-            finalize()
+        if comm.rank == 0:
+            logging.info("")
+            logging.info("=" * 80)
+            logging.info(f" DLIO test for checkpointing at the end of steps on ADLS Gen2")
+            logging.info("=" * 80)
+        
+        with initialize_config_dir(version_base=None, config_dir=config_dir):
+            cfg = compose(config_name='config',
+                         overrides=adls_overrides + [
+                             '++workload.workflow.checkpoint=True',
+                             '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
+                             '++workload.framework=pytorch',
+                             '++workload.workflow.generate_data=False',
+                             '++workload.workflow.train=False',
+                             '++workload.checkpoint.model_size=1024',
+                             '++workload.checkpoint.optimization_groups=[1024,128]',
+                             '++workload.checkpoint.num_layers=2',
+                             '++workload.checkpoint.layer_parameters=[16]',
+                             '++workload.checkpoint.steps_between_checkpoints=2',
+                             '++workload.checkpoint.num_checkpoints_write=2',
+                             '++workload.checkpoint.num_checkpoints_read=2',
+                             '++workload.checkpoint.randomize_tensor=True'
+                         ])
+            ConfigArguments.reset()
+            benchmark = DLIOBenchmark(cfg['workload'])
+            benchmark.initialize()
+            benchmark.run()
+            benchmark.finalize()
+        
+        # Clean up
+        clean_adls(mock_file_system_client, ["checkpoints/"])
+        finalize()
 
 @pytest.mark.timeout(TEST_TIMEOUT_SECONDS, method="thread")
 def test_adls_checkpoint_ksm_config(patch_adls_checkpoint) -> None:
@@ -700,91 +691,87 @@ def test_adls_checkpoint_ksm_config(patch_adls_checkpoint) -> None:
         mock_service.from_connection_string.return_value = mock_instance
         mock_cred.return_value = MagicMock()
 
-        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint") as mock_checkpoint:
-            mock_checkpoint_instance = MagicMock()
-            mock_checkpoint.return_value = mock_checkpoint_instance
-
-            if comm.rank == 0:
-                logging.info("")
-                logging.info("=" * 80)
-                logging.info(" DLIO test for KSM config on ADLS Gen2")
-                logging.info("=" * 80)
+        if comm.rank == 0:
+            logging.info("")
+            logging.info("=" * 80)
+            logging.info(" DLIO test for KSM config on ADLS Gen2")
+            logging.info("=" * 80)
+        
+        # Test Case 1: KSM enabled with defaults
+        logging.info("Testing KSM enabled with defaults...")
+        with initialize_config_dir(version_base=None, config_dir=config_dir):
+            cfg = compose(config_name='config',
+                         overrides=adls_overrides + [
+                             '++workload.workflow.checkpoint=True',
+                             '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
+                             '++workload.checkpoint.ksm={}',
+                             '++workload.workflow.generate_data=False',
+                             '++workload.workflow.train=False',
+                             '++workload.checkpoint.num_checkpoints_write=1',
+                             '++workload.checkpoint.num_checkpoints_read=1',
+                             '++workload.checkpoint.randomize_tensor=False'
+                         ])
+            ConfigArguments.reset()
+            benchmark = DLIOBenchmark(cfg['workload'])
+            benchmark.initialize()
             
-            # Test Case 1: KSM enabled with defaults
-            logging.info("Testing KSM enabled with defaults...")
-            with initialize_config_dir(version_base=None, config_dir=config_dir):
-                cfg = compose(config_name='config',
-                             overrides=adls_overrides + [
-                                 '++workload.workflow.checkpoint=True',
-                                 '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
-                                 '++workload.checkpoint.ksm={}',
-                                 '++workload.workflow.generate_data=False',
-                                 '++workload.workflow.train=False',
-                                 '++workload.checkpoint.num_checkpoints_write=1',
-                                 '++workload.checkpoint.num_checkpoints_read=1',
-                                 '++workload.checkpoint.randomize_tensor=False'
-                             ])
-                ConfigArguments.reset()
-                benchmark = DLIOBenchmark(cfg['workload'])
-                benchmark.initialize()
-                
-                args = ConfigArguments.get_instance()
-                assert args.ksm_init is True, "[Test Case 1 Failed] ksm_init should be True when ksm section is present"
-                assert args.ksm_madv_mergeable_id == 12
-                assert args.ksm_high_ram_trigger == 30.0
-                assert args.ksm_low_ram_exit == 15.0
-                assert args.ksm_await_time == 200
-                logging.info("[Test Case 1 Passed]")
+            args = ConfigArguments.get_instance()
+            assert args.ksm_init is True, "[Test Case 1 Failed] ksm_init should be True when ksm section is present"
+            assert args.ksm_madv_mergeable_id == 12
+            assert args.ksm_high_ram_trigger == 30.0
+            assert args.ksm_low_ram_exit == 15.0
+            assert args.ksm_await_time == 200
+            logging.info("[Test Case 1 Passed]")
+        
+        # Test Case 2: KSM enabled with overrides
+        logging.info("Testing KSM enabled with overrides...")
+        with initialize_config_dir(version_base=None, config_dir=config_dir):
+            cfg = compose(config_name='config',
+                         overrides=adls_overrides + [
+                             '++workload.workflow.checkpoint=True',
+                             '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
+                             '++workload.checkpoint.ksm.high_ram_trigger=25.5',
+                             '++workload.checkpoint.ksm.await_time=100',
+                             '++workload.workflow.generate_data=False',
+                             '++workload.workflow.train=False',
+                             '++workload.checkpoint.num_checkpoints_write=1',
+                             '++workload.checkpoint.num_checkpoints_read=1',
+                             '++workload.checkpoint.randomize_tensor=False'
+                         ])
+            ConfigArguments.reset()
+            benchmark = DLIOBenchmark(cfg['workload'])
+            benchmark.initialize()
             
-            # Test Case 2: KSM enabled with overrides
-            logging.info("Testing KSM enabled with overrides...")
-            with initialize_config_dir(version_base=None, config_dir=config_dir):
-                cfg = compose(config_name='config',
-                             overrides=adls_overrides + [
-                                 '++workload.workflow.checkpoint=True',
-                                 '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
-                                 '++workload.checkpoint.ksm.high_ram_trigger=25.5',
-                                 '++workload.checkpoint.ksm.await_time=100',
-                                 '++workload.workflow.generate_data=False',
-                                 '++workload.workflow.train=False',
-                                 '++workload.checkpoint.num_checkpoints_write=1',
-                                 '++workload.checkpoint.num_checkpoints_read=1',
-                                 '++workload.checkpoint.randomize_tensor=False'
-                             ])
-                ConfigArguments.reset()
-                benchmark = DLIOBenchmark(cfg['workload'])
-                benchmark.initialize()
-                
-                args = ConfigArguments.get_instance()
-                assert args.ksm_init is True
-                assert args.ksm_high_ram_trigger == 25.5
-                assert args.ksm_await_time == 100
-                logging.info("[Test Case 2 Passed]")
+            args = ConfigArguments.get_instance()
+            assert args.ksm_init is True
+            assert args.ksm_high_ram_trigger == 25.5
+            assert args.ksm_await_time == 100
+            logging.info("[Test Case 2 Passed]")
+        
+        # Test Case 3: KSM disabled
+        logging.info("Testing KSM disabled...")
+        with initialize_config_dir(version_base=None, config_dir=config_dir):
+            cfg = compose(config_name='config',
+                         overrides=adls_overrides + [
+                             '++workload.workflow.checkpoint=True',
+                             '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
+                             '++workload.workflow.generate_data=False',
+                             '++workload.workflow.train=False',
+                             '++workload.checkpoint.num_checkpoints_write=1',
+                             '++workload.checkpoint.num_checkpoints_read=1',
+                             '++workload.checkpoint.randomize_tensor=False'
+                         ])
+            ConfigArguments.reset()
+            benchmark = DLIOBenchmark(cfg['workload'])
+            benchmark.initialize()
             
-            # Test Case 3: KSM disabled
-            logging.info("Testing KSM disabled...")
-            with initialize_config_dir(version_base=None, config_dir=config_dir):
-                cfg = compose(config_name='config',
-                             overrides=adls_overrides + [
-                                 '++workload.workflow.checkpoint=True',
-                                 '++workload.checkpoint.checkpoint_mechanism=pt_adls_save',
-                                 '++workload.workflow.generate_data=False',
-                                 '++workload.workflow.train=False',
-                                 '++workload.checkpoint.num_checkpoints_write=1',
-                                 '++workload.checkpoint.num_checkpoints_read=1',
-                                 '++workload.checkpoint.randomize_tensor=False'
-                             ])
-                ConfigArguments.reset()
-                benchmark = DLIOBenchmark(cfg['workload'])
-                benchmark.initialize()
-                
-                args = ConfigArguments.get_instance()
-                assert args.ksm_init is False
-                logging.info("[Test Case 3 Passed]")
-            
-            # Clean up
-            clean_adls(mock_file_system_client, ["checkpoints/"])
-            finalize()
+            args = ConfigArguments.get_instance()
+            assert args.ksm_init is False
+            logging.info("[Test Case 3 Passed]")
+        
+        # Clean up
+        clean_adls(mock_file_system_client, ["checkpoints/"])
+        finalize()
 
 if __name__ == '__main__':
     unittest.main()
