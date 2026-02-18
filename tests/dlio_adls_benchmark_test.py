@@ -367,18 +367,21 @@ def test_adls_subset(setup_test_env) -> None:
             logging.info(f" DLIO training test for subset on ADLS Gen2")
             logging.info("=" * 80)
         with initialize_config_dir(version_base=None, config_dir=config_dir):
-            cfg = compose(config_name='config', overrides=adls_overrides + ['++workload.workflow.train=True',
-                                                           '++workload.workflow.generate_data=True',
-                                                           '++workload.checkpoint.mode=subset',
-                                                           '++workload.framework=pytorch',
-                                                           '++workload.reader.data_loader=pytorch',
-                                                           '++workload.dataset.format=npz',
-                                                           '++workload.train.computation_time=0.01',
-                                                           '++workload.evaluation.eval_time=0.005',
-                                                           '++workload.train.epochs=1',
-                                                           '++workload.dataset.num_files_train=8',
-                                                           '++workload.reader.read_threads=1'])
-            benchmark = run_benchmark(cfg)
+            set_dftracer_finalize(False)
+            # Generate data
+            cfg = compose(config_name='config', overrides=adls_overrides + [
+                '++workload.workflow.train=False',
+                '++workload.workflow.generate_data=True'])
+            benchmark = run_benchmark(cfg, verify=False)
+
+            # Train on subset
+            set_dftracer_initialize(False)
+            cfg = compose(config_name='config', overrides=adls_overrides + [
+                '++workload.workflow.train=True',
+                '++workload.workflow.generate_data=False',
+                '++workload.dataset.num_files_train=8',
+                '++workload.train.computation_time=0.01'])
+            benchmark = run_benchmark(cfg, verify=True)
             
         # Clean up
         clean_adls(mock_file_system_client, ["train/", "valid/"])
