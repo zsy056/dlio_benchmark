@@ -21,6 +21,7 @@ from omegaconf import OmegaConf
 import unittest
 from datetime import datetime
 import uuid
+import io
 from io import BytesIO
 import glob
 from mpi4py import MPI
@@ -297,15 +298,54 @@ def patch_adls_checkpoint(setup_test_env):
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     adls_overrides += [f"++workload.checkpoint.checkpoint_folder=abfs://{storage_root}/checkpoints"]
 
-    def mock_init(self, connection_string=None, account_url=None):
-        self.connection_string = connection_string
-        self.account_url = account_url
-        # Store reference to mock client
-        self._mock_file_system_client = mock_file_system_client
-
+    class MockWriter:
+        """Mock writer that behaves like a file object for torch.save"""
+        def __init__(self, path, mock_storage):
+            self.path = path
+            self.mock_storage = mock_storage
+            self.buffer = io.BytesIO()
+        
+        def __enter__(self):
+            return self.buffer
+        
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            # Store the written data in mock storage
+            if exc_type is None:
+                self.mock_storage[self.path] = self.buffer.getvalue()
+            return False
+        
+        def write(self, data):
+            return self.buffer.write(data)
+    
+    class MockReader:
+        """Mock reader that behaves like a file object for torch.load"""
+        def __init__(self, path, mock_storage):
+            self.path = path
+            self.mock_storage = mock_storage
+        
+        def __enter__(self):
+            data = self.mock_storage.get(self.path, b'')
+            return io.BytesIO(data)
+        
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+    
+    class MockAzStorageCheckpoint:
+        """Mock AzStorageCheckpoint for testing"""
+        def __init__(self, connection_string=None, account_url=None):
+            self.connection_string = connection_string
+            self.account_url = account_url
+            self._mock_storage = {}
+        
+        def writer(self, path):
+            return MockWriter(path, self._mock_storage)
+        
+        def reader(self, path):
+            return MockReader(path, self._mock_storage)
+    
     # Mock AzStorageCheckpoint if available
     if AzStorageCheckpoint is not None:
-        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint.__init__", new=mock_init):
+        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint", MockAzStorageCheckpoint):
             yield setup_test_env
     else:
         yield setup_test_env
