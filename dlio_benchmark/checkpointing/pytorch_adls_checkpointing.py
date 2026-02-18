@@ -24,6 +24,12 @@ from dlio_benchmark.common.constants import MODULE_CHECKPOINT
 
 dlp = Profile(MODULE_CHECKPOINT)
 
+# Import AzStorageCheckpoint at module level to allow test patching
+try:
+    from azstoragetorch import AzStorageCheckpoint
+except ImportError:
+    AzStorageCheckpoint = None
+
 class PyTorchADLSCheckpointing(PyTorchCheckpointing):
     __instance = None
 
@@ -38,10 +44,8 @@ class PyTorchADLSCheckpointing(PyTorchCheckpointing):
     def __init__(self):
         BaseCheckpointing.__init__(self, "ptadls")
 
-        # Import Azure Storage for PyTorch library
-        try:
-            from azstoragetorch import AzStorageCheckpoint
-        except ImportError:
+        # Check if AzStorageCheckpoint is available
+        if AzStorageCheckpoint is None:
             raise ImportError(
                 "azstoragetorch is required for ADLS Gen2 checkpointing support. "
                 "Install with: pip install azstoragetorch"
