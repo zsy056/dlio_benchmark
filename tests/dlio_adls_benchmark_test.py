@@ -207,6 +207,7 @@ class MockADLSFileSystemClient:
                     if first_part not in seen:
                         seen.add(first_part)
                         is_dir = '/' in key[len(first_part):]
+                        # Return full path from root (matching Azure SDK behavior)
                         paths.append(MockPathItem(first_part, is_directory=is_dir))
             return paths
         else:
@@ -225,7 +226,8 @@ class MockADLSFileSystemClient:
                             # Check if this is a directory
                             full_path = prefix + first_part
                             is_dir = any(k.startswith(full_path + '/') for k in self.storage.keys())
-                            paths.append(MockPathItem(first_part, is_directory=is_dir))
+                            # Return full path from root (matching Azure SDK behavior)
+                            paths.append(MockPathItem(full_path, is_directory=is_dir))
             return paths
 
 class MockDataLakeServiceClient:
