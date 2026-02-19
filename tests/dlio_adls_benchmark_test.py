@@ -298,6 +298,10 @@ def patch_adls_checkpoint(setup_test_env):
     storage_root, storage_type, mock_file_system_client, adls_overrides = setup_test_env
     adls_overrides += [f"++workload.checkpoint.checkpoint_folder=abfs://{storage_root}/checkpoints"]
 
+    # Reset singleton instance to ensure fresh instance with mock
+    from dlio_benchmark.checkpointing.pytorch_adls_checkpointing import PyTorchADLSCheckpointing
+    PyTorchADLSCheckpointing._PyTorchADLSCheckpointing__instance = None
+
     class MockWriter:
         """Mock writer that behaves like a file object for torch.save"""
         def __init__(self, path, mock_storage):
