@@ -343,11 +343,8 @@ def patch_adls_checkpoint(setup_test_env):
         def reader(self, path):
             return MockReader(path, self._mock_storage)
     
-    # Mock AzStorageCheckpoint if available
-    if AzStorageCheckpoint is not None:
-        with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint", MockAzStorageCheckpoint):
-            yield setup_test_env
-    else:
+    # Always mock AzStorageCheckpoint for tests (whether azstoragetorch is installed or not)
+    with patch("dlio_benchmark.checkpointing.pytorch_adls_checkpointing.AzStorageCheckpoint", MockAzStorageCheckpoint):
         yield setup_test_env
 
 @pytest.mark.timeout(TEST_TIMEOUT_SECONDS, method="thread")
